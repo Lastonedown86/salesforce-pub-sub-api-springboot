@@ -33,5 +33,4 @@ public class LoginEventStreamObserver implements IProcessEventObserver {
         // For example, you can send it to a message queue or perform some action based on the event
         // Example: sendToMessageQueue(processedEvent);
     }
-
 }

@@ -16,33 +16,62 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class TopicSchema {
+
+    private static final String LOG_SCHEMA_FETCHED = "Schema of topic {}: {}";
+    private static final String LOG_TOPIC_RPC_ID = "GetTopic Call RPC ID: {}";
+    private static final String LOG_SCHEMA_RPC_ID = "GetSchema Call RPC ID: {}";
+
     private final IPubSubService pubSubService;
     private final SalesforceSessionTokenService salesforceSessionTokenService;
 
     public Schema getSchema(String topicName, CallCredentials callCredentials) {
-        TopicInfo topicInfo = fetchTopicInfo(topicName, callCredentials);
-        SchemaInfo schemaInfo = fetchSchemaInfo(topicInfo.getSchemaId(), callCredentials);
+        try {
+            TopicInfo topicInfo = fetchTopicInfo(topicName, callCredentials);
+            SchemaInfo schemaInfo = fetchSchemaInfo(topicInfo.getSchemaId(), callCredentials);
 
-        Schema schema = new Schema.Parser().parse(schemaInfo.getSchemaJson());
-        log.info("Schema of topic {}: {}", topicName, schema.toString());
-        return schema;
+            Schema schema = new Schema.Parser().parse(schemaInfo.getSchemaJson());
+            log.info(LOG_SCHEMA_FETCHED, topicName, schema.toString());
+            return schema;
+        } catch (Exception e) {
+            log.error("Failed to fetch schema for topic: {}", topicName, e);
+            throw e;
+        }
     }
 
     public SchemaInfo getSchemaInfo(String topicName, CallCredentials callCredentials) {
-        TopicInfo topicInfo = fetchTopicInfo(topicName, callCredentials);
-        return fetchSchemaInfo(topicInfo.getSchemaId(), callCredentials);
+        try {
+            TopicInfo topicInfo = fetchTopicInfo(topicName, callCredentials);
+            return fetchSchemaInfo(topicInfo.getSchemaId(), callCredentials);
+        } catch (Exception e) {
+            log.error("Failed to fetch schema info for topic: {}", topicName, e);
+            throw e;
+        }
     }
 
     private TopicInfo fetchTopicInfo(String topicName, CallCredentials callCredentials) {
-        TopicInfo topicInfo = pubSubService.getTopicInfo(
-                TopicRequest.newBuilder().setTopicName(topicName).build(), callCredentials);
-        log.info("GetTopic Call RPC ID: {}", topicInfo.getRpcId());
-        return topicInfo;
+        try {
+            TopicInfo topicInfo = pubSubService.getTopicInfo(
+                    TopicRequest.newBuilder().setTopicName(topicName).build(), callCredentials);
+            logRpcId(LOG_TOPIC_RPC_ID, topicInfo.getRpcId());
+            return topicInfo;
+        } catch (Exception e) {
+            log.error("Failed to fetch topic info for topic: {}", topicName, e);
+            throw e;
+        }
     }
 
-    private SchemaInfo fetchSchemaInfo(String schemaId, CallCredentials callCredentials){
-        SchemaInfo schemaInfo = pubSubService.getSchemaInfo(schemaId, callCredentials);
-        log.info("GetSchema Call RPC ID: {}", schemaInfo.getRpcId());
-        return schemaInfo;
+    private SchemaInfo fetchSchemaInfo(String schemaId, CallCredentials callCredentials) {
+        try {
+            SchemaInfo schemaInfo = pubSubService.getSchemaInfo(schemaId, callCredentials);
+            logRpcId(LOG_SCHEMA_RPC_ID, schemaInfo.getRpcId());
+            return schemaInfo;
+        } catch (Exception e) {
+            log.error("Failed to fetch schema info for schema ID: {}", schemaId, e);
+            throw e;
+        }
+    }
+
+    private void logRpcId(String message, String rpcId) {
+        log.info(message, rpcId);
     }
 }

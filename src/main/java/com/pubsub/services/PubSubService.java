@@ -2,20 +2,8 @@ package com.pubsub.services;
 
 import com.pubsub.utils.SalesforceSessionTokenService;
 import com.pubsub.utils.XClientTraceIdClientInterceptor;
-import com.salesforce.eventbus.protobuf.PubSubGrpc;
-import com.salesforce.eventbus.protobuf.PublishRequest;
-import com.salesforce.eventbus.protobuf.PublishResponse;
-import com.salesforce.eventbus.protobuf.SchemaInfo;
-import com.salesforce.eventbus.protobuf.SchemaRequest;
-import com.salesforce.eventbus.protobuf.TopicInfo;
-import com.salesforce.eventbus.protobuf.TopicRequest;
-import io.grpc.CallCredentials;
-import io.grpc.Channel;
-import io.grpc.ClientInterceptors;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.Metadata;
-import io.grpc.StatusRuntimeException;
+import com.salesforce.eventbus.protobuf.*;
+import io.grpc.*;
 import io.grpc.stub.AbstractStub;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +61,47 @@ public class PubSubService implements IPubSubService {
     }
 
     @Override
+    public PublishResponse publish(PublishRequest publishRequest, CallCredentials callCredentials) {
+        try {
+            return pubSubBlockingStub(callCredentials).publish(publishRequest);
+        } catch (Exception e) {
+            logError("Error publishing message", e);
+            return null;
+        }
+    }
+
+    @Override
+    public TopicInfo getTopicInfo(TopicRequest topicName, CallCredentials callCredentials) {
+        return pubSubBlockingStub(callCredentials).getTopic(topicName);
+    }
+
+    @Override
+    public SchemaInfo getSchemaInfo(String schemaId, CallCredentials callCredentials) {
+        return pubSubBlockingStub(callCredentials).getSchema(SchemaRequest.newBuilder().setSchemaId(schemaId).build());
+    }
+
+    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.HOURS)
+    private void checkChannelState() {
+        log.info("Current channel status: {}", getOrCreateManagedChannel().getState(true));
+    }
+
+    @Override
+    public void logError(String context, Exception e) {
+        log.error(context, e);
+        if (e instanceof StatusRuntimeException statusRuntimeException) {
+            Optional.ofNullable(statusRuntimeException.getTrailers())
+                    .ifPresent(trailers -> trailers.keys().forEach(key ->
+                            log.error("[Trailer] Key: {}, Value: {}", key,
+                                    trailers.get(Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER)))));
+        }
+    }
+
+    @Override
+    public Boolean isChannelShutdown() {
+        return managedChannel != null && managedChannel.isShutdown();
+    }
+
+    @Override
     public PubSubGrpc.PubSubBlockingStub pubSubBlockingStub(CallCredentials callCredentials) {
         return createStub(PubSubGrpc::newBlockingStub, callCredentials);
     }
@@ -96,47 +125,5 @@ public class PubSubService implements IPubSubService {
 
     private ManagedChannel createManagedChannel() {
         return ManagedChannelBuilder.forAddress(GRPC_HOST, GRPC_PORT).build();
-    }
-
-    @Override
-    public void logError(String context, Exception e) {
-        log.error(context, e);
-        if (e instanceof StatusRuntimeException statusRuntimeException) {
-            Optional.ofNullable(statusRuntimeException.getTrailers())
-                    .ifPresent(trailers -> trailers.keys().forEach(key ->
-                            log.error("[Trailer] Key: {}, Value: {}", key,
-                                    trailers.get(Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER)))));
-        }
-    }
-
-    @Override
-    public Boolean isChannelShutdown() {
-        return managedChannel != null && managedChannel.isShutdown();
-    }
-
-    @Override
-    public PublishResponse publish(PublishRequest publishRequest, CallCredentials callCredentials) {
-        try {
-            return pubSubBlockingStub(callCredentials).publish(publishRequest);
-        } catch (Exception e) {
-            log.error("Error publishing message", e);
-            return null;
-        }
-    }
-
-    @Override
-    public TopicInfo getTopicInfo(TopicRequest topicName, CallCredentials callCredentials) {
-        return pubSubBlockingStub(callCredentials).getTopic(topicName);
-    }
-
-    @Override
-    public SchemaInfo getSchemaInfo(String schemaId, CallCredentials callCredentials) {
-        return pubSubBlockingStub(callCredentials).getSchema(SchemaRequest.newBuilder().setSchemaId(schemaId).build());
-    }
-
-    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.HOURS)
-    private void checkChannelState() {
-
-        log.info("Current channel status: {}", getOrCreateManagedChannel().getState(true));
     }
 }

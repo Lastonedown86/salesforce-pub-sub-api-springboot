@@ -5,8 +5,6 @@ import com.google.protobuf.ByteString;
 import com.pubsub.config.SalesforceSubscribeConfig;
 import com.pubsub.events.ProcessEventManager;
 import com.pubsub.exceptions.SchemaFetchException;
-import com.pubsub.exceptions.SubscriptionException;
-import com.pubsub.exceptions.SubscriptionRuntimeException;
 import com.pubsub.models.ProcessedEvent;
 import com.pubsub.utils.SalesforceSessionTokenService;
 import com.salesforce.eventbus.protobuf.ConsumerEvent;
@@ -37,12 +35,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class Subscribe {
-    private static final String LOG_FETCH_REQUEST = "Sending fetch request for {} with RPC ID: {}";
+
+    // Constants for log messages
     private static final String LOG_RECEIVED_BATCH = "Received batch of {} {} with RPC ID: {}";
     private static final String LOG_RETRY_SUBSCRIPTION = "Retrying {} subscription";
     private static final String LOG_SUBSCRIPTION_COMPLETED = "Call completed by server. Closing Subscription.";
     private static final String ERROR_FETCH_SCHEMA = "Failed to fetch schema for ID: ";
     private static final String ERROR_PROCESS_EVENT = "Error processing event: {}";
+    private static final String ERROR_SUBSCRIPTION = "Error during {} subscription";
 
     private final IPubSubService pubSubService;
     private final SalesforceSubscribeConfig salesforceSubscribeConfig;
@@ -54,10 +54,14 @@ public class Subscribe {
     private final Map<String, Schema> schemaCache = new ConcurrentHashMap<>();
 
     public void startSubscription(String topic, int batchSize, ReplayPreset replayPreset, CallCredentials callCredentials) {
-        pubSubService.checkSubscriptionStatus(topic, callCredentials);
-        topicSchema.getSchema(topic, callCredentials);
-        fetchEvents(batchSize, topic, replayPreset, callCredentials);
-        logChannelStatus(topic);
+        try {
+            pubSubService.checkSubscriptionStatus(topic, callCredentials);
+            topicSchema.getSchema(topic, callCredentials);
+            fetchEvents(batchSize, topic, replayPreset, callCredentials);
+            logChannelStatus(topic);
+        } catch (Exception e) {
+            log.error("Failed to start subscription for topic: {}", topic, e);
+        }
     }
 
     private void fetchEvents(int batchSize, String topic, ReplayPreset replayPreset, CallCredentials callCredentials) {
@@ -76,10 +80,7 @@ public class Subscribe {
 
             @Override
             public void onError(Throwable t) {
-                try {
-                    handleSubscriptionError(t, batchSize, topic);
-                } catch (SubscriptionException e) {
-                    throw new SubscriptionRuntimeException("Error during subscription handling", e);                }
+                handleSubscriptionError(t, batchSize, topic);
             }
 
             @Override
@@ -132,7 +133,7 @@ public class Subscribe {
                 String schemaJson = pubSubService.getSchemaJson(schemaId, callCredentials);
                 return new Schema.Parser().parse(schemaJson);
             } catch (Exception e) {
-                pubSubService.logError("Error getting schema from PubSub", e);
+                log.error(ERROR_FETCH_SCHEMA + "{}", schemaId, e);
                 throw new SchemaFetchException(ERROR_FETCH_SCHEMA + schemaId, e);
             }
         });
@@ -150,12 +151,12 @@ public class Subscribe {
         }
     }
 
-    private void handleSubscriptionError(Throwable t, int batchSize, String topic) throws SubscriptionException {
-        pubSubService.logError("Error during " + topic + " subscription", (Exception) t);
+    private void handleSubscriptionError(Throwable t, int batchSize, String topic) {
+        log.error(ERROR_SUBSCRIPTION, topic, t);
         try {
             retrySubscription(batchSize, topic);
         } catch (Exception e) {
-            throw new SubscriptionException("Failed to retry subscription", e);
+            log.error("Failed to retry subscription for topic: {}", topic, e);
         }
     }
 

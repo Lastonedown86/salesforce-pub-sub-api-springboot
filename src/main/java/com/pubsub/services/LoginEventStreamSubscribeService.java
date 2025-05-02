@@ -9,28 +9,45 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LoginEventStreamSubscribeService {
+
+    private static final String TOPIC = "/event/LoginEventStream";
+    private static final int EVENTS_PER_FETCH = 5;
+
     private final Subscribe subscribe;
     private final SalesforceSubscribeConfig salesforceSubscribeConfig;
     private final SalesforceSessionTokenService salesforceSessionTokenService;
-
-    private static final String TOPIC = "/event/LoginEventStream";
-    private static final int NUMBER_OF_EVENTS_TO_SUBSCRIBE_IN_EACH_FETCH_REQUEST = 5;
 
     @PostConstruct
     @ConditionalOnProperty(value = "salesforce-subscribe-config.event-listening-on", havingValue = "true")
     public void startStreamEventSubscription() {
         if (isTopicActive()) {
-            subscribe.startSubscription(TOPIC, NUMBER_OF_EVENTS_TO_SUBSCRIBE_IN_EACH_FETCH_REQUEST, ReplayPreset.LATEST, salesforceSessionTokenService.login());
+            startSubscription();
         } else {
-            log.warn("Topic {} is not active in the configuration. Subscription will not start.", TOPIC);
+            logInactiveTopicWarning();
         }
     }
 
     private boolean isTopicActive() {
-        return salesforceSubscribeConfig.getActiveEvents().contains(TOPIC);
+        List<String> activeEvents = salesforceSubscribeConfig.getActiveEvents();
+        return activeEvents != null && activeEvents.contains(TOPIC);
+    }
+
+    private void startSubscription() {
+        try {
+            log.info("Starting subscription for topic: {}", TOPIC);
+            subscribe.startSubscription(TOPIC, EVENTS_PER_FETCH, ReplayPreset.LATEST, salesforceSessionTokenService.login());
+        } catch (Exception e) {
+            log.error("Failed to start subscription for topic: {}", TOPIC, e);
+        }
+    }
+
+    private void logInactiveTopicWarning() {
+        log.warn("Topic {} is not active in the configuration. Subscription will not start.", TOPIC);
     }
 }

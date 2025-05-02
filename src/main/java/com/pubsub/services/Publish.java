@@ -24,16 +24,26 @@ import java.io.IOException;
 @Service
 @RequiredArgsConstructor
 public class Publish {
+    private static final String LOG_PUBLISH_SUCCESS = "Published {} events to topic {} with RPC ID: {}";
+    private static final String LOG_PUBLISH_FAILURE = "Failed to publish event to topic {}: {}";
+
     private final IPubSubService pubSubService;
     private final TopicSchema topicSchema;
     private final SalesforceSessionTokenService salesforceSessionTokenService;
 
+
     public PublishResponse publishEvent(final String busTopicName, final GenericRecord event, final CallCredentials callCredentials) throws Exception {
-        SchemaInfo schemaInfo = topicSchema.getSchemaInfo(busTopicName, callCredentials);
-        PublishRequest publishRequest = generatePublishRequest(busTopicName, schemaInfo, event);
-        PublishResponse publishResponse = pubSubService.publish(publishRequest, callCredentials);
-        log.info("Published {} events to topic {} with RPC ID: {}", publishResponse.getResultsCount(), busTopicName, publishResponse.getRpcId());
-        return publishResponse;
+        try {
+            SchemaInfo schemaInfo = topicSchema.getSchemaInfo(busTopicName, callCredentials);
+            PublishRequest publishRequest = generatePublishRequest(busTopicName, schemaInfo, event);
+            PublishResponse publishResponse = pubSubService.publish(publishRequest, callCredentials);
+
+            log.info(LOG_PUBLISH_SUCCESS, publishResponse.getResultsCount(), busTopicName, publishResponse.getRpcId());
+            return publishResponse;
+        } catch (Exception e) {
+            log.error(LOG_PUBLISH_FAILURE, busTopicName, e.getMessage(), e);
+            throw e;
+        }
     }
 
     private PublishRequest generatePublishRequest(final String busTopicName, final SchemaInfo schemaInfo, final GenericRecord event) throws IOException {

@@ -8,6 +8,10 @@ import io.grpc.CallCredentials;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.avro.Schema;
 import org.springframework.stereotype.Service;
 
@@ -23,19 +27,22 @@ public class TopicSchema {
 
     private final IPubSubService pubSubService;
     private final SalesforceSessionTokenService salesforceSessionTokenService;
+    private final Map<String, Schema> schemaCache = new ConcurrentHashMap<>();
 
     public Schema getSchema(String topicName, CallCredentials callCredentials) {
-        try {
-            TopicInfo topicInfo = fetchTopicInfo(topicName, callCredentials);
-            SchemaInfo schemaInfo = fetchSchemaInfo(topicInfo.getSchemaId(), callCredentials);
+        return schemaCache.computeIfAbsent(topicName, key -> {
+            try {
+                TopicInfo topicInfo = fetchTopicInfo(key, callCredentials);
+                SchemaInfo schemaInfo = fetchSchemaInfo(topicInfo.getSchemaId(), callCredentials);
 
-            Schema schema = new Schema.Parser().parse(schemaInfo.getSchemaJson());
-            log.info(LOG_SCHEMA_FETCHED, topicName, schema.toString());
-            return schema;
-        } catch (Exception e) {
-            log.error("Failed to fetch schema for topic: {}", topicName, e);
-            throw e;
-        }
+                Schema schema = new Schema.Parser().parse(schemaInfo.getSchemaJson());
+                log.info(LOG_SCHEMA_FETCHED, key, schema.toString());
+                return schema;
+            } catch (Exception e) {
+                log.error("Failed to fetch schema for topic: {}", key, e);
+                throw e;
+            }
+        });
     }
 
     public SchemaInfo getSchemaInfo(String topicName, CallCredentials callCredentials) {

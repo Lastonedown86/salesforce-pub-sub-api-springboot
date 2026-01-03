@@ -1,6 +1,8 @@
 package com.pubsub.services;
 
 import com.pubsub.config.PubSubConfiguration;
+import com.pubsub.exceptions.PublishException;
+import com.pubsub.exceptions.SchemaFetchException;
 import com.pubsub.utils.SalesforceSessionTokenService;
 import com.pubsub.utils.XClientTraceIdClientInterceptor;
 import com.salesforce.eventbus.protobuf.*;
@@ -16,6 +18,8 @@ import jakarta.annotation.PreDestroy;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -57,7 +61,7 @@ public class PubSubService implements IPubSubService {
             return pubSubBlockingStub(callCredentials).getSchema(request).getSchemaJson();
         } catch (StatusRuntimeException e) {
             logError("Error fetching schema for schemaId: " + schemaId, e);
-            throw new com.pubsub.exceptions.SchemaFetchException(
+            throw new SchemaFetchException(
                 "Failed to fetch schema: " + schemaId,
                 "SCHEMA_FETCH_ERROR",
                 e
@@ -66,12 +70,13 @@ public class PubSubService implements IPubSubService {
     }
 
     @Override
+    @Retryable(retryFor = { StatusRuntimeException.class }, maxAttempts = 3, backoff = @Backoff(delay = 2000))
     public PublishResponse publish(PublishRequest publishRequest, CallCredentials callCredentials) {
         try {
             return pubSubBlockingStub(callCredentials).publish(publishRequest);
         } catch (StatusRuntimeException e) {
             logError("Error publishing message", e);
-            throw new com.pubsub.exceptions.PublishException(
+            throw new PublishException(
                 "Failed to publish event",
                 "PUBLISH_ERROR",
                 e
@@ -80,11 +85,13 @@ public class PubSubService implements IPubSubService {
     }
 
     @Override
+    @Retryable(retryFor = { StatusRuntimeException.class }, maxAttempts = 3, backoff = @Backoff(delay = 2000))
     public TopicInfo getTopicInfo(TopicRequest topicName, CallCredentials callCredentials) {
         return pubSubBlockingStub(callCredentials).getTopic(topicName);
     }
 
     @Override
+    @Retryable(retryFor = { StatusRuntimeException.class }, maxAttempts = 3, backoff = @Backoff(delay = 2000))
     public SchemaInfo getSchemaInfo(String schemaId, CallCredentials callCredentials) {
         return pubSubBlockingStub(callCredentials).getSchema(SchemaRequest.newBuilder().setSchemaId(schemaId).build());
     }

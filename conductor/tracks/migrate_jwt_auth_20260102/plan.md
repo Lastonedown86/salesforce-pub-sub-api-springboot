@@ -7,7 +7,7 @@
 
 ## Phase 2: Implementation
 - [x] Task: Create a JWT generator utility to sign requests with the private key. 2303869
-- [ ] Task: Implement the token exchange service to request an access token from Salesforce using the signed JWT.
+- [x] Task: Implement the token exchange service to request an access token from Salesforce using the signed JWT. 41c1e32
 - [ ] Task: Update `SalesforceSessionTokenService` to use the new JWT flow instead of previous methods.
 
 ## Phase 3: Verification

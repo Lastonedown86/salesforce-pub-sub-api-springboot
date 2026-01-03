@@ -11,6 +11,6 @@
 - [x] Task: Update `SalesforceSessionTokenService` to use the new JWT flow instead of previous methods. 478fa8e
 
 ## Phase 3: Verification
-- [ ] Task: Write unit tests for JWT generation and token exchange logic.
-- [ ] Task: Perform an end-to-end test to verify gRPC connection stability with the new JWT-based tokens.
-- [ ] Task: Conductor - User Manual Verification 'Verification' (Protocol in workflow.md)
+- [x] Task: Write unit tests for JWT generation and token exchange logic. 68ee651
+- [x] Task: Perform an end-to-end test to verify gRPC connection stability with the new JWT-based tokens. 696769c
+- [~] Task: Conductor - User Manual Verification 'Verification' (Protocol in workflow.md)

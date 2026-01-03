@@ -3,7 +3,7 @@
 ## Phase 1: Setup and Security
 - [x] Task: Configure environment variables/properties for JWT credentials (Client ID, Username, Login URL). be1d4d9
 - [x] Task: Securely store the private key file and configure its path in the application. cd5f49d
-- [ ] Task: Add necessary dependencies for JWT signing (e.g., JJWT or similar) if not already present.
+- [x] Task: Add necessary dependencies for JWT signing (e.g., JJWT or similar) if not already present. 397eb59
 
 ## Phase 2: Implementation
 - [ ] Task: Create a JWT generator utility to sign requests with the private key.

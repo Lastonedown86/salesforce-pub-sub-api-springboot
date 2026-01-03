@@ -31,14 +31,17 @@ A robust Spring Boot application demonstrating how to integrate with the [Salesf
 A helper script `generate-cert.ps1` is included to generate a self-signed certificate and private key in the correct format (PKCS#8 PEM) for this application.
 
 **Usage:**
-1.  Open PowerShell in the project root.
-2.  Run:
-    ```powershell
-    .\generate-cert.ps1
-    ```
-3.  The script will generate:
-    - `public-key.crt`: Upload this to your Salesforce Connected App ("Use digital signatures").
-    - `private-key.pem`: Place this in `src/main/resources/` (or configure `salesforce.jwt.private-key-path`).
+
+1. Open PowerShell in the project root.
+2. Run:
+
+   ```powershell
+   .\generate-cert.ps1
+   ```
+
+3. The script will generate:
+   - `public-key.crt`: Upload this to your Salesforce Connected App ("Use digital signatures").
+   - `private-key.pem`: Place this in `src/main/resources/` (or configure `salesforce.jwt.private-key-path`).
 
 ## Configuration
 
@@ -51,7 +54,7 @@ The application is configured via `application.properties` or `application.yml`.
 | `salesforce.jwt.login-url` | Salesforce Login URL (e.g., `https://login.salesforce.com`) | N/A |
 | `salesforce.jwt.client-id` | Connected App Consumer Key | N/A |
 | `salesforce.jwt.username` | Salesforce Username | N/A |
-| `salesforce.jwt.private-key-path` | Path to the private key file (e.g., `classpath:private-key.pem`) | N/A |
+| `salesforce.jwt.private-key-path` | Private Key. Supports: File Path, Classpath (`classpath:`), or Raw Content (`-----BEGIN...`) | N/A |
 | `pubsub.grpc.host` | Pub/Sub API Host | `api.pubsub.salesforce.com` |
 | `pubsub.grpc.port` | Pub/Sub API Port | `7443` |
 | `pubsub.schema.cache-ttl-minutes` | Schema cache TTL in minutes | `60` |

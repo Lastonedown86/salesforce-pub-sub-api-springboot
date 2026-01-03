@@ -38,9 +38,23 @@ public class SalesforceJwtGenerator {
                 .compact();
     }
 
-    private PrivateKey loadPrivateKey(String path) throws Exception {
-        String key = new String(Files.readAllBytes(Paths.get(path)));
-        String privateKeyPEM = key
+    private PrivateKey loadPrivateKey(String keyOrPath) throws Exception {
+        String keyContent;
+        if (keyOrPath.contains("-----BEGIN")) {
+            // Treat as raw key content
+            keyContent = keyOrPath;
+        } else if (keyOrPath.startsWith("classpath:")) {
+            // Load from classpath
+            String resourcePath = keyOrPath.substring("classpath:".length());
+            try (var inputStream = new org.springframework.core.io.ClassPathResource(resourcePath).getInputStream()) {
+                keyContent = new String(inputStream.readAllBytes());
+            }
+        } else {
+            // Load from file system
+            keyContent = new String(Files.readAllBytes(Paths.get(keyOrPath)));
+        }
+
+        String privateKeyPEM = keyContent
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
                 .replaceAll("\\s+", "");

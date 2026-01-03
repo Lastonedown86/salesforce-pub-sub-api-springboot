@@ -5,12 +5,16 @@ import com.pubsub.models.ProcessedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PreDestroy;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 
@@ -34,14 +38,32 @@ public class ProcessEventManager {
     public void notifyObservers(String topic, ProcessedEvent event) throws Exception {
         List<IProcessEventObserver> eventObservers = observers.get(topic);
         if (eventObservers != null) {
+            List<Future<?>> futures = new ArrayList<>();
             for (IProcessEventObserver observer : eventObservers) {
-                observer.onEvent(topic,event);
+                Future<?> future = executor.submit(() -> {
+                    try {
+                        observer.onEvent(topic, event);
+                    } catch (Exception e) {
+                        log.error("Observer failed for topic: {}", topic, e);
+                    }
+                });
+                futures.add(future);
+            }
+            // Wait for all observers to complete
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    log.error("Error waiting for observer completion", e);
+                    Thread.currentThread().interrupt();
+                }
             }
         } else {
             log.warn("No observers registered for topic: {}", topic);
         }
     }
 
+    @PreDestroy
     public void shutdown() {
         executor.shutdown();
         try {

@@ -32,8 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
-# Secrets
+# Secrets and credentials
 *.jks
 *.pem
 *.key
 *.p12
+src/main/resources/application.properties

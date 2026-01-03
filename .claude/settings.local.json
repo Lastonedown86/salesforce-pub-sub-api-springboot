@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn dependency:tree:*)",
+      "Bash(mvn help:effective-pom:*)",
+      "Bash(mvn versions:display-dependency-updates:*)",
+      "Bash(mvn versions:display-plugin-updates:*)",
+      "Bash(wc -l:*)"
+    ]
+  }
+}

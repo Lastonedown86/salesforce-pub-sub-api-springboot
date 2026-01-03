@@ -10,7 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -125,5 +126,23 @@ public class PubSubService implements IPubSubService {
 
     private ManagedChannel createManagedChannel() {
         return ManagedChannelBuilder.forAddress(GRPC_HOST, GRPC_PORT).build();
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        log.info("Shutting down gRPC channel");
+        if (managedChannel != null && !managedChannel.isShutdown()) {
+            try {
+                managedChannel.shutdown();
+                if (!managedChannel.awaitTermination(30, TimeUnit.SECONDS)) {
+                    log.warn("Channel did not terminate gracefully, forcing shutdown");
+                    managedChannel.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                log.error("Channel shutdown interrupted", e);
+                managedChannel.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }

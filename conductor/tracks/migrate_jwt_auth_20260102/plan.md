@@ -5,7 +5,7 @@
 - [x] Task: Securely store the private key file and configure its path in the application. cd5f49d
 - [x] Task: Add necessary dependencies for JWT signing (e.g., JJWT or similar) if not already present. 397eb59
 
-## Phase 2: Implementation
+## Phase 2: Implementation [checkpoint: d7f23ab]
 - [x] Task: Create a JWT generator utility to sign requests with the private key. 2303869
 - [x] Task: Implement the token exchange service to request an access token from Salesforce using the signed JWT. 41c1e32
 - [x] Task: Update `SalesforceSessionTokenService` to use the new JWT flow instead of previous methods. 478fa8e

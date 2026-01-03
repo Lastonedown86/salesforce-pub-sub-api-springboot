@@ -1,6 +1,6 @@
 # Plan: Migrate Authentication to JWT Bearer Flow
 
-## Phase 1: Setup and Security
+## Phase 1: Setup and Security [checkpoint: 87d7b8d]
 - [x] Task: Configure environment variables/properties for JWT credentials (Client ID, Username, Login URL). be1d4d9
 - [x] Task: Securely store the private key file and configure its path in the application. cd5f49d
 - [x] Task: Add necessary dependencies for JWT signing (e.g., JJWT or similar) if not already present. 397eb59

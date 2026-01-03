@@ -1,0 +1,53 @@
+package com.pubsub.utils;
+
+import com.pubsub.config.SalesforceJwtConfig;
+import io.jsonwebtoken.Jwts;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
+import java.util.Date;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class SalesforceJwtGenerator {
+
+    private final SalesforceJwtConfig jwtConfig;
+
+    public String generateToken() throws Exception {
+        PrivateKey privateKey = loadPrivateKey(jwtConfig.getPrivateKeyPath());
+
+        long nowMillis = System.currentTimeMillis();
+        Date now = new Date(nowMillis);
+        Date exp = new Date(nowMillis + 3 * 60 * 1000); // 3 minutes expiration
+
+        return Jwts.builder()
+                .issuer(jwtConfig.getClientId())
+                .subject(jwtConfig.getUsername())
+                .audience().add(jwtConfig.getLoginUrl()).and()
+                .expiration(exp)
+                .issuedAt(now)
+                .signWith(privateKey, Jwts.SIG.RS256)
+                .compact();
+    }
+
+    private PrivateKey loadPrivateKey(String path) throws Exception {
+        String key = new String(Files.readAllBytes(Paths.get(path)));
+        String privateKeyPEM = key
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s+", "");
+
+        byte[] encoded = Base64.getDecoder().decode(privateKeyPEM);
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        return kf.generatePrivate(keySpec);
+    }
+}

@@ -5,7 +5,10 @@
       "Bash(mvn help:effective-pom:*)",
       "Bash(mvn versions:display-dependency-updates:*)",
       "Bash(mvn versions:display-plugin-updates:*)",
-      "Bash(wc -l:*)"
+      "Bash(wc -l:*)",
+      "Bash(mvn compile:*)",
+      "Bash(mvn install:*)",
+      "Bash(git add:*)"
     ]
   }
 }

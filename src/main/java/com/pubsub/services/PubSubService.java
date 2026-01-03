@@ -1,5 +1,6 @@
 package com.pubsub.services;
 
+import com.pubsub.config.PubSubConfiguration;
 import com.pubsub.utils.SalesforceSessionTokenService;
 import com.pubsub.utils.XClientTraceIdClientInterceptor;
 import com.salesforce.eventbus.protobuf.*;
@@ -20,10 +21,9 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 @Service
 public class PubSubService implements IPubSubService {
-    private static final String GRPC_HOST = "api.pubsub.salesforce.com";
-    private static final int GRPC_PORT = 7443;
 
     private final SalesforceSessionTokenService salesforceSessionTokenService;
+    private final PubSubConfiguration config;
     private ManagedChannel managedChannel;
 
     @PostConstruct
@@ -55,9 +55,13 @@ public class PubSubService implements IPubSubService {
         try {
             SchemaRequest request = SchemaRequest.newBuilder().setSchemaId(schemaId).build();
             return pubSubBlockingStub(callCredentials).getSchema(request).getSchemaJson();
-        } catch (Exception e) {
+        } catch (StatusRuntimeException e) {
             logError("Error fetching schema for schemaId: " + schemaId, e);
-            return null;
+            throw new com.pubsub.exceptions.SchemaFetchException(
+                "Failed to fetch schema: " + schemaId,
+                "SCHEMA_FETCH_ERROR",
+                e
+            );
         }
     }
 
@@ -65,9 +69,13 @@ public class PubSubService implements IPubSubService {
     public PublishResponse publish(PublishRequest publishRequest, CallCredentials callCredentials) {
         try {
             return pubSubBlockingStub(callCredentials).publish(publishRequest);
-        } catch (Exception e) {
+        } catch (StatusRuntimeException e) {
             logError("Error publishing message", e);
-            return null;
+            throw new com.pubsub.exceptions.PublishException(
+                "Failed to publish event",
+                "PUBLISH_ERROR",
+                e
+            );
         }
     }
 
@@ -81,7 +89,7 @@ public class PubSubService implements IPubSubService {
         return pubSubBlockingStub(callCredentials).getSchema(SchemaRequest.newBuilder().setSchemaId(schemaId).build());
     }
 
-    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.HOURS)
+    @Scheduled(fixedRateString = "${pubsub.event-processing.channel-health-check-interval-ms}")
     private void checkChannelState() {
         log.info("Current channel status: {}", getOrCreateManagedChannel().getState(true));
     }
@@ -125,7 +133,10 @@ public class PubSubService implements IPubSubService {
     }
 
     private ManagedChannel createManagedChannel() {
-        return ManagedChannelBuilder.forAddress(GRPC_HOST, GRPC_PORT).build();
+        return ManagedChannelBuilder
+                .forAddress(config.getGrpc().getHost(), config.getGrpc().getPort())
+                .idleTimeout(config.getGrpc().getChannelIdleTimeoutMinutes(), TimeUnit.MINUTES)
+                .build();
     }
 
     @PreDestroy
@@ -134,8 +145,9 @@ public class PubSubService implements IPubSubService {
         if (managedChannel != null && !managedChannel.isShutdown()) {
             try {
                 managedChannel.shutdown();
-                if (!managedChannel.awaitTermination(30, TimeUnit.SECONDS)) {
-                    log.warn("Channel did not terminate gracefully, forcing shutdown");
+                long timeoutSeconds = config.getGrpc().getShutdownTimeoutSeconds();
+                if (!managedChannel.awaitTermination(timeoutSeconds, TimeUnit.SECONDS)) {
+                    log.warn("Channel did not terminate gracefully after {} seconds, forcing shutdown", timeoutSeconds);
                     managedChannel.shutdownNow();
                 }
             } catch (InterruptedException e) {

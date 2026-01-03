@@ -9,5 +9,9 @@ public class SalesforceLoginException extends RuntimeException {
         super(message);
     }
 
+    public SalesforceLoginException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
 
 }

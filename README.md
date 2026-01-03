@@ -26,6 +26,20 @@ A robust Spring Boot application demonstrating how to integrate with the [Salesf
     - Selected OAuth Scopes: `api`, `refresh_token`, `offline_access`.
   - A private key file (RSA) matching the public key uploaded to the Connected App.
 
+### Certificate Generation (Windows/PowerShell)
+
+A helper script `generate-cert.ps1` is included to generate a self-signed certificate and private key in the correct format (PKCS#8 PEM) for this application.
+
+**Usage:**
+1.  Open PowerShell in the project root.
+2.  Run:
+    ```powershell
+    .\generate-cert.ps1
+    ```
+3.  The script will generate:
+    - `public-key.crt`: Upload this to your Salesforce Connected App ("Use digital signatures").
+    - `private-key.pem`: Place this in `src/main/resources/` (or configure `salesforce.jwt.private-key-path`).
+
 ## Configuration
 
 The application is configured via `application.properties` or `application.yml`. You can also use environment variables.
@@ -33,7 +47,7 @@ The application is configured via `application.properties` or `application.yml`.
 ### Key Properties
 
 | Property | Description | Default |
-|----------|-------------|---------|
+| :--- | :--- | :--- |
 | `salesforce.jwt.login-url` | Salesforce Login URL (e.g., `https://login.salesforce.com`) | N/A |
 | `salesforce.jwt.client-id` | Connected App Consumer Key | N/A |
 | `salesforce.jwt.username` | Salesforce Username | N/A |
@@ -62,24 +76,27 @@ pubsub.event-processing.thread-pool-size=10
 
 ## Building and Running
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-repo/salesforce-pub-sub-api-springboot.git
-    cd salesforce-pub-sub-api-springboot
-    ```
+1. **Clone the repository:**
 
-2.  **Place your private key:**
-    Put your `private-key.pem` in `src/main/resources/keys/` (or update the path in config).
+   ```bash
+   git clone https://github.com/your-repo/salesforce-pub-sub-api-springboot.git
+   cd salesforce-pub-sub-api-springboot
+   ```
 
-3.  **Build the project:**
-    ```bash
-    mvn clean install
-    ```
+2. **Place your private key:**
+   Put your `private-key.pem` in `src/main/resources/keys/` (or update the path in config).
 
-4.  **Run the application:**
-    ```bash
-    mvn spring-boot:run
-    ```
+3. **Build the project:**
+
+   ```bash
+   mvn clean install
+   ```
+
+4. **Run the application:**
+
+   ```bash
+   mvn spring-boot:run
+   ```
 
 ## Architecture
 
@@ -93,6 +110,7 @@ pubsub.event-processing.thread-pool-size=10
 ## Observability
 
 The application exposes metrics at `/actuator/prometheus` (if configured). Key metrics include:
+
 - gRPC channel state.
 - Retry attempts (via Spring Retry metrics if enabled).
 - Application health.
